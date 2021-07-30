@@ -26,7 +26,7 @@ long lastMillisTimeOff = blinkTime;
 byte gameMatrix[3][3] {
   {0, 0, 6},
   {0, 9, 0},
-  {0, 0, 0}
+  {0, 0, 18}
 };
 
 bool somePlayerWon = false;
@@ -49,6 +49,7 @@ void setup() {
 
 void loop() {
 //  if (!somePlayerWon) { 
+
     for (byte i = 0; i < sizeof(gameMatrix) / sizeof(gameMatrix[0]); i++) {
       for (byte j = 0; j < sizeof(gameMatrix[i]); j++) {
         byte value = gameMatrix[i][j];
@@ -56,29 +57,29 @@ void loop() {
         // posicao ocupada por um jogador
         if (value > 0) {
           mega.shiftWrite(value, HIGH);
-        } 
+        }
       }
     }
-    
+
     byte valueOfShift = 0;
     
     if (currentPlayer == PLAYER_RED) {
-      valueOfShift = getValueOfShift(PLAYER_RED);
       if (digitalRead(redPin) == LOW) {
-        // precisa pegar a proxima posicao livre
-        currentPosition = getNextFreePosition();
-        
+        mega.shiftWrite(getCurrentPositionOfPlayer(PLAYER_RED), LOW);
+        moveCurrentPosition();
         while(digitalRead(redPin) == LOW) {}
       }
-
+      valueOfShift = getCurrentPositionOfPlayer(PLAYER_RED);
     } else {
-      valueOfShift = getValueOfShift(PLAYER_GREEN);
+      valueOfShift = getCurrentPositionOfPlayer(PLAYER_GREEN);
       if (digitalRead(greenPin) == LOW) {
         currentPosition++;
         
         while(digitalRead(greenPin) == LOW) {}
       }
     }
+
+    delay(200);
 
     blinkLed(valueOfShift);
 
@@ -134,40 +135,38 @@ void loop() {
 //  }
 }
 
-// baseado no currentPosition
-byte getNextFreePosition() {
+void moveCurrentPosition() {
   byte desiredPosition = currentPosition + 1;
+  if (desiredPosition > 9) {
+    desiredPosition = 1;
+  }
   
-  byte allowedPosition = 1;
-  byte counterPosition = 1;
-  
+  byte counter = 1;
   for (byte i = 0; i < sizeof(gameMatrix) / sizeof(gameMatrix[0]); i++) {
     for (byte j = 0; j < sizeof(gameMatrix[i]); j++) {
       byte value = gameMatrix[i][j];
 
-      if (counterPosition == desiredPosition) {
+      if (counter == desiredPosition) { 
         if (value > 0) {
           desiredPosition++;
           if (desiredPosition > 9) {
             desiredPosition = 1;
           }
+        } else {
+          currentPosition = desiredPosition;
+          break;
         }
-        
-      } else {
-        counterPosition++;
       }
 
-//      if (value > 0) {
-//        firstFreePosition++;
-//      } else {
-//        break;
-//      }
+      counter++;
+      if (counter > 9) {
+        counter = 1;
+      }
     }
   }
-  return firstFreePosition;
 }
 
-byte getValueOfShift(byte currentPlayer) {
+byte getCurrentPositionOfPlayer(byte currentPlayer) {
   if (currentPlayer == PLAYER_RED) {
     return currentPosition * 2 - 1;
   }
@@ -182,10 +181,6 @@ void blinkLed(int position) {
     mega.shiftWrite(position, !changeLed);
     changeLed = !changeLed;
   } 
-//  else if (currentMillis > lastMillisTimeOff + blinkTime) {
-//    lastMillisTimeOff = currentMillis + blinkTime;
-//    mega.shiftWrite(position, LOW);
-//  }
 }
 
 
